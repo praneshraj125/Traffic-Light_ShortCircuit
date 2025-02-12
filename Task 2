@@ -1,0 +1,84 @@
+const int redLED1 = 4;
+const int yellowLED1 = 3;
+const int greenLED1 = 2;
+const int pushbutton1 = 6;
+
+// Ultrasonic Sensor Pins
+const int trigPin = 9;
+const int echoPin = 10;
+
+#define THRESHOLD_DISTANCE 20  // Vehicle detection threshold (in cm)
+#define NO_VEHICLE_TIMEOUT 300  // 3 seconds
+
+void setup() {
+  pinMode(redLED1, OUTPUT);
+  pinMode(yellowLED1, OUTPUT);
+  pinMode(greenLED1, OUTPUT);
+  pinMode(pushbutton1, INPUT);  // External pull-down resistor used
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+}
+
+void loop() {
+  // Stay Red if no vehicle is detected for 30 seconds
+  unsigned long noVehicleStart = millis();
+  while (getDistance() > THRESHOLD_DISTANCE) {
+    if (digitalRead(pushbutton1) == HIGH) {  
+      // Pedestrian presses button → Turn Red for 5s
+      digitalWrite(greenLED1, LOW);
+      digitalWrite(yellowLED1, LOW);
+      digitalWrite(redLED1, HIGH);
+      delay(5000);
+      return;
+    }
+    if (millis() - noVehicleStart > NO_VEHICLE_TIMEOUT) {
+      digitalWrite(greenLED1, LOW);
+      digitalWrite(yellowLED1, LOW);
+      digitalWrite(redLED1, HIGH);
+      return;  // Stay in Red state if no vehicle detected for 30s
+    }
+  }
+
+  // Normal Traffic Light Cycle
+  digitalWrite(redLED1, LOW);
+  digitalWrite(greenLED1, HIGH);
+  if (delayWithCheck(5000)) return;  // Green for 5 seconds
+
+  digitalWrite(greenLED1, LOW);
+  digitalWrite(yellowLED1, HIGH);
+  if (delayWithCheck(2000)) return;  // Yellow for 2 seconds
+
+  digitalWrite(yellowLED1, LOW);
+  digitalWrite(redLED1, HIGH);
+  if (delayWithCheck(5000)) return;  // Red for 5 seconds
+}
+
+// Ultrasonic Distance Measurement Function
+long getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  long duration = pulseIn(echoPin, HIGH);
+  long distance = duration * 0.034 / 2;  // Convert to cm
+  return distance;
+}
+
+// Delay with Button Check
+bool delayWithCheck(int duration) {
+  for (int i = 0; i < duration / 100; i++) {
+    if (digitalRead(pushbutton1) == HIGH) {  
+      digitalWrite(greenLED1, LOW);
+      digitalWrite(yellowLED1, LOW);
+      digitalWrite(redLED1, HIGH);
+      delay(5000);  // Ensure Red stays for 5 seconds
+      return true;  // Exit early
+    }
+    if (getDistance() > THRESHOLD_DISTANCE) return true;  // No vehicle detected, exit
+    delay(100);
+  }
+  return false;
+}
